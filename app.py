@@ -542,7 +542,7 @@ else:
 
         if "daily_r" in st.session_state and not st.session_state.daily_r.empty:
             st.dataframe(st.session_state.daily_r, use_container_width=True)
-         if st.button("💾 Күндік есепті сақтау", key="save_daily_btn",
+           if st.button("💾 Күндік есепті сақтау", key="save_daily",
              use_container_width=True, type="primary"):
     with st.spinner("Жіберілуде..."):
         if append_report(st.session_state.daily_r, DAILY_PATH, "Есеп күні"):
@@ -569,7 +569,7 @@ else:
 
         if "month_r" in st.session_state and not st.session_state.month_r.empty:
             st.dataframe(st.session_state.month_r, use_container_width=True)
-          if st.button("💾 Айлық есепті сақтау", key="save_monthly_btn",
+            if st.button("💾 Айлық есепті сақтау", key="save_monthly",
              use_container_width=True, type="primary"):
     with st.spinner("Жіберілуде..."):
         if append_report(st.session_state.month_r, MONTHLY_PATH, "Ай"):
