@@ -2,6 +2,10 @@
 
 Мектеп асханасына онлайн тапсырыс беру жүйесі.
 
+## 🔗 Деректер көзі
+- GitHub: https://github.com/aidarpavl/Stolovaia27
+- Мәзір: menu.csv (GitHub-тан оқылады және GitHub-қа сақталады)
+
 ## 🚀 Мүмкіндіктер
 
 ### 👨‍🎓 Оқушы режимі
@@ -13,19 +17,21 @@
 - Тапсырыс беру
 
 ### 👨‍🍳 Асханашы режимі
-- Мәзірді өңдеу (кесте түрінде)
-- Жаңа тағам қосу
+- Мәзірді өңдеу + **GitHub-қа сақтау**
+- Жаңа тағам қосу + **GitHub-қа сақтау**
 - Тапсырыстарды қарау
-- Есептерді шығару (тағам, сынып, күн, санат бойынша)
+- Есептерді шығару
 
-## 📁 Файлдар
-- `app.py` — негізгі қосымша
-- `menu.csv` — мәзір деректері
-- `Orders.csv` — тапсырыстар деректері
-- `requirements.txt` — тәуелділіктер
+## 🔐 GitHub токен орнату
 
-## 🛠️ Орнату
-
-```bash
-pip install -r requirements.txt
-streamlit run app.py
+1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. «Generate new token (classic)» → `repo` рұқсаты
+3. Токенді көшіріңіз
+4. Streamlit Cloud → App → Settings → Secrets:
+   ```toml
+   [github]
+   token = "ghp_..."
+   owner = "aidarpavl"
+   repo = "Stolovaia27"
+   branch = "main"
+   menu_path = "menu.csv"
