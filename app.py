@@ -1,14 +1,17 @@
 """
 «Жас Дарын» мектебінің асханасы
 Столовая школы Жас Дарын — онлайн тапсырыс жүйесі
-Автор: aidarpavl
-Streamlit + GitHub деректер көзі
+Деректер көзі: github.com/aidarpavl/Stolovaia27
+Мәзір GitHub-тан оқылады және GitHub-қа сақталады.
 """
 
 import streamlit as st
 import pandas as pd
+import requests
+import base64
 import os
 from datetime import datetime
+from io import StringIO
 
 # ============================================================
 # БЕТТІҢ КОНФИГУРАЦИЯСЫ
@@ -38,6 +41,7 @@ st.markdown("""
         padding: 15px;
         border-left: 5px solid #FF6B35;
         margin-bottom: 10px;
+        min-height: 150px;
     }
     .price-tag {
         color: #FF6B35;
@@ -50,12 +54,8 @@ st.markdown("""
         padding: 3px 10px;
         border-radius: 15px;
         font-size: 0.85rem;
-    }
-    .top-teacher {
-        background: linear-gradient(135deg, #FFD700, #FFA500);
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 10px;
+        display: inline-block;
+        margin-bottom: 8px;
     }
     .stButton>button {
         background-color: #FF6B35;
@@ -67,52 +67,141 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# ДЕРЕКТЕРДІ ЖҮКТЕУ
+# GITHUB КОНФИГУРАЦИЯСЫ
 # ============================================================
-@st.cache_data
-def load_menu():
-    """Мәзір деректерін CSV файлынан жүктеу"""
-    # GitHub-тан немесе жергілікті файлдан жүктеу
-    github_url = "https://raw.githubusercontent.com/aidarpavl/Zhd_-Stolovaya-zaiavka/main/menu.csv"
-    
+try:
+    GITHUB_TOKEN = st.secrets["github"]["token"]
+    GITHUB_OWNER = st.secrets["github"]["owner"]
+    GITHUB_REPO = st.secrets["github"]["repo"]
+    GITHUB_BRANCH = st.secrets["github"]["branch"]
+    MENU_PATH = st.secrets["github"]["menu_path"]
+    GITHUB_ENABLED = True
+except Exception:
+    # Егер secrets.toml болмаса — тек оқу режимі
+    GITHUB_OWNER = "aidarpavl"
+    GITHUB_REPO = "Stolovaia27"
+    GITHUB_BRANCH = "main"
+    MENU_PATH = "menu.csv"
+    GITHUB_TOKEN = None
+    GITHUB_ENABLED = False
+
+# GitHub API URL-дері
+GITHUB_RAW_URL = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}/{MENU_PATH}"
+GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{MENU_PATH}"
+
+
+# ============================================================
+# GITHUB ФУНКЦИЯЛАРЫ
+# ============================================================
+@st.cache_data(ttl=30)
+def load_menu_from_github():
+    """
+    Мәзірді GitHub-тан оқу (raw URL арқылы).
+    Егер GitHub-тан оқу мүмкін болмаса — жергілікті файлдан оқиды.
+    """
     try:
-        # Алдымен жергілікті файлды тексеру
+        response = requests.get(GITHUB_RAW_URL, timeout=10)
+        if response.status_code == 200:
+            df = pd.read_csv(StringIO(response.text))
+        else:
+            raise Exception(f"HTTP {response.status_code}")
+    except Exception as e:
+        st.warning(f"⚠️ GitHub-тан оқу мүмкін болмады ({e}). Жергілікті файлдан оқылады.")
         if os.path.exists("menu.csv"):
             df = pd.read_csv("menu.csv")
         else:
-            # GitHub-тан жүктеу
-            df = pd.read_csv(github_url)
-        
-        # Баған атауларын тазалау
-        df.columns = df.columns.str.strip()
-        df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype(int)
-        df['available'] = df['available'].astype(str).str.upper() == 'TRUE'
-        
-        return df
+            # Резервтік деректер
+            df = pd.DataFrame({
+                'day': ['Понедельник'] * 5,
+                'item_name': ['Каша овсяная с ягодами', 'Бутерброд с сыром',
+                              'Борщ со сметаной', 'Котлета с пюре', 'Компот из сухофруктов'],
+                'category': ['Завтрак', 'Завтрак', 'Обед', 'Обед', 'Напитки'],
+                'price': [450, 350, 550, 650, 150],
+                'available': [True] * 5
+            })
+
+    # Баған атауларын тазалау
+    df.columns = df.columns.str.strip()
+    df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype(int)
+    df['available'] = df['available'].astype(str).str.upper() == 'TRUE'
+
+    return df
+
+
+def save_menu_to_github(df):
+    """
+    Мәзірді GitHub-қа сақтау (GitHub API арқылы).
+    Қажет: GITHUB_TOKEN (repo рұқсатымен).
+    """
+    if not GITHUB_ENABLED or not GITHUB_TOKEN:
+        st.error("❌ GitHub токені орнатылмаған! `secrets.toml` файлын тексеріңіз.")
+        return False
+
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    try:
+        # 1. Ағымдағы файлдың SHA-ын алу (жаңарту үшін қажет)
+        get_response = requests.get(GITHUB_API_URL, headers=headers, timeout=10)
+
+        if get_response.status_code == 200:
+            current_sha = get_response.json().get("sha")
+        elif get_response.status_code == 404:
+            current_sha = None  # Файл жоқ — жаңадан жасалады
+        else:
+            st.error(f"❌ GitHub API қатесі: {get_response.status_code}")
+            return False
+
+        # 2. CSV-ді base64-ке айналдыру
+        csv_content = df.to_csv(index=False)
+        content_encoded = base64.b64encode(csv_content.encode('utf-8')).decode('utf-8')
+
+        # 3. Commit хабарламасы
+        commit_message = f"Мәзірді жаңарту ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"
+
+        # 4. GitHub-қа жіберу
+        payload = {
+            "message": commit_message,
+            "content": content_encoded,
+            "branch": GITHUB_BRANCH
+        }
+        if current_sha:
+            payload["sha"] = current_sha
+
+        put_response = requests.put(
+            GITHUB_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=15
+        )
+
+        if put_response.status_code in [200, 201]:
+            return True
+        else:
+            st.error(f"❌ Сақтау қатесі: {put_response.status_code} — {put_response.text}")
+            return False
+
     except Exception as e:
-        st.error(f"Мәзірді жүктеу қатесі: {e}")
-        # Резервтік деректер
-        return pd.DataFrame({
-            'day': ['Понедельник'] * 5,
-            'item_name': ['Каша овсяная с ягодами', 'Бутерброд с сыром', 
-                         'Борщ со сметаной', 'Котлета с пюре', 'Компот из сухофруктов'],
-            'category': ['Завтрак', 'Завтрак', 'Обед', 'Обед', 'Напитки'],
-            'price': [450, 350, 550, 650, 150],
-            'available': [True] * 5
-        })
+        st.error(f"❌ GitHub-қа сақтау қатесі: {e}")
+        return False
 
 
-@st.cache_data
+# ============================================================
+# ТАПСЫРЫСТАР (жергілікті CSV)
+# ============================================================
+@st.cache_data(ttl=10)
 def load_orders():
-    """Тапсырыстар деректерін жүктеу"""
+    """Тапсырыстарды жергілікті CSV-тен оқу"""
     if os.path.exists("Orders.csv"):
         try:
-            df = pd.read_csv("Orders.csv")
-            return df
-        except:
+            return pd.read_csv("Orders.csv")
+        except Exception:
             pass
     return pd.DataFrame(columns=[
-        'timestamp', 'class', 'day', 'item_name', 'category', 'price', 'quantity', 'total'
+        'timestamp', 'class', 'day', 'item_name', 'category',
+        'price', 'quantity', 'total'
     ])
 
 
@@ -122,7 +211,6 @@ def save_order(order_data):
     new_order = pd.DataFrame([order_data])
     orders_df = pd.concat([orders_df, new_order], ignore_index=True)
     orders_df.to_csv("Orders.csv", index=False)
-    # Кэшті тазалау
     load_orders.clear()
 
 
@@ -131,19 +219,14 @@ def save_order(order_data):
 # ============================================================
 if 'cart' not in st.session_state:
     st.session_state.cart = []
-
 if 'role' not in st.session_state:
     st.session_state.role = 'Ученик'
-
 if 'selected_week' not in st.session_state:
     st.session_state.selected_week = '1-я неделя'
-
 if 'selected_day' not in st.session_state:
     st.session_state.selected_day = 'Понедельник'
-
 if 'selected_class' not in st.session_state:
     st.session_state.selected_class = ''
-
 if 'last_order' not in st.session_state:
     st.session_state.last_order = None
 
@@ -159,17 +242,23 @@ with st.sidebar:
         index=0 if st.session_state.role == 'Ученик' else 1
     )
     st.session_state.role = role
-    
+
+    # GitHub мәртебесі
     st.markdown("---")
-    
-    # ===== СЕБЕТ (тек оқушы режимінде) =====
+    if GITHUB_ENABLED:
+        st.success("🔗 GitHub: қосылған")
+    else:
+        st.warning("📴 GitHub: тек оқу режимі")
+
+    st.markdown("---")
+
+    # ===== СЕБЕТ =====
     if st.session_state.role == 'Ученик':
         st.markdown("### 🛒 Корзина")
-        
+
         if len(st.session_state.cart) == 0:
             st.info("Корзина пуста")
         else:
-            # Себеттегі тағамдарды көрсету
             total_sum = 0
             for i, item in enumerate(st.session_state.cart):
                 col1, col2 = st.columns([4, 1])
@@ -180,20 +269,18 @@ with st.sidebar:
                     if st.button("❌", key=f"remove_{i}"):
                         st.session_state.cart.pop(i)
                         st.rerun()
-                
                 total_sum += item['price'] * item['quantity']
-            
+
             st.markdown(f"### 💰 Итого: **{total_sum}₸**")
-            
+
             if st.button("🗑️ Очистить корзину", use_container_width=True):
                 st.session_state.cart = []
                 st.rerun()
-            
+
             if st.button("✅ Оформить заказ", type="primary", use_container_width=True):
                 if not st.session_state.selected_class:
                     st.error("⚠️ Сначала введите класс!")
                 else:
-                    # Тапсырысты сақтау
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     for item in st.session_state.cart:
                         save_order({
@@ -206,7 +293,6 @@ with st.sidebar:
                             'quantity': item['quantity'],
                             'total': item['price'] * item['quantity']
                         })
-                    
                     st.session_state.last_order = {
                         'timestamp': timestamp,
                         'class': st.session_state.selected_class,
@@ -227,14 +313,13 @@ if st.session_state.role == 'Ученик':
     # ==========================================================
     # ОҚУШЫ РЕЖИМІ
     # ==========================================================
-    st.markdown('<div class="main-header">🍽️ Столовая школы Жас Дарын</div>', 
+    st.markdown('<div class="main-header">🍽️ Столовая школы Жас Дарын</div>',
                 unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:gray;'>Закажи обед онлайн</p>", 
+    st.markdown("<p style='text-align:center; color:gray;'>Закажи обед онлайн</p>",
                 unsafe_allow_html=True)
-    
     st.markdown("---")
-    
-    # ===== КЛАСС ЕНГІЗУ =====
+
+    # ===== КЛАСС =====
     st.markdown("### 🎓 Введите ваш класс")
     col1, col2 = st.columns([1, 3])
     with col1:
@@ -246,7 +331,6 @@ if st.session_state.role == 'Ученик':
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         if class_num:
-            # Сынып тобын анықтау
             try:
                 num = int(''.join(filter(str.isdigit, class_num)) or 0)
                 if num <= 4:
@@ -256,14 +340,13 @@ if st.session_state.role == 'Ученик':
                 else:
                     group = "Старшие классы (9-11)"
                 st.success(f"🎓 {group}: {class_num}")
-            except:
+            except Exception:
                 st.warning("Класс форматын тексеріңіз")
-    
     st.session_state.selected_class = class_num
-    
+
     st.markdown("---")
-    
-    # ===== АПТА ТАҢДАУ =====
+
+    # ===== АПТА =====
     st.markdown("### 📅 Выберите неделю")
     weeks = ['1-я неделя', '2-я неделя', '3-я неделя', '4-я неделя']
     week_cols = st.columns(4)
@@ -272,12 +355,13 @@ if st.session_state.role == 'Ученик':
             if st.button(
                 week,
                 use_container_width=True,
-                type="primary" if st.session_state.selected_week == week else "secondary"
+                type="primary" if st.session_state.selected_week == week else "secondary",
+                key=f"week_{i}"
             ):
                 st.session_state.selected_week = week
                 st.rerun()
-    
-    # ===== КҮН ТАҢДАУ =====
+
+    # ===== КҮН =====
     st.markdown("### 📆 День:")
     days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница']
     selected_day = st.selectbox(
@@ -287,9 +371,9 @@ if st.session_state.role == 'Ученик':
         label_visibility="collapsed"
     )
     st.session_state.selected_day = selected_day
-    
-    # ===== САНАТ ТАҢДАУ =====
-    menu_df = load_menu()
+
+    # ===== САНАТ =====
+    menu_df = load_menu_from_github()
     all_categories = ['Все'] + sorted(menu_df['category'].unique().tolist())
     st.markdown("### 🏷️ Категория:")
     selected_category = st.selectbox(
@@ -297,77 +381,49 @@ if st.session_state.role == 'Ученик':
         options=all_categories,
         label_visibility="collapsed"
     )
-    
+
     st.markdown("---")
-    
-    # ===== МӘЗІРДІ КӨРСЕТУ =====
+
+    # ===== МӘЗІР =====
     st.markdown(f"### 🍽️ Меню на {selected_day}")
-    
-    # Сүзу
     day_menu = menu_df[menu_df['day'] == selected_day].copy()
     if selected_category != 'Все':
         day_menu = day_menu[day_menu['category'] == selected_category]
-    
+
     if len(day_menu) == 0:
         st.warning("⚠️ Бұл күнге тағамдар табылмады")
     else:
-        # Тағамдарды 3 бағанға бөлу
         cols = st.columns(3)
         for i, (idx, row) in enumerate(day_menu.iterrows()):
             with cols[i % 3]:
-                with st.container():
-                    st.markdown(f"""
-                        <div class="menu-card">
-                            <h4>{row['item_name']}</h4>
-                            <span class="category-tag">{row['category']}</span>
-                            <p class="price-tag">💰 {row['price']}₸</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Санды реттеу
-                    qty_col1, qty_col2, qty_col3 = st.columns([1, 1, 1])
-                    with qty_col1:
-                        if st.button("−", key=f"minus_{idx}", use_container_width=True):
-                            pass
-                    with qty_col2:
-                        qty = st.number_input(
-                            "Саны",
-                            min_value=1,
-                            max_value=10,
-                            value=1,
-                            key=f"qty_{idx}",
-                            label_visibility="collapsed"
-                        )
-                    with qty_col3:
-                        if st.button("+", key=f"plus_{idx}", use_container_width=True):
-                            pass
-                    
-                    # Себетке қосу
-                    if st.button(
-                        "🛒 В корзину",
-                        key=f"add_{idx}",
-                        use_container_width=True,
-                        type="primary"
-                    ):
-                        # Себетте бар ма, тексеру
-                        found = False
-                        for item in st.session_state.cart:
-                            if item['item_name'] == row['item_name']:
-                                item['quantity'] += qty
-                                found = True
-                                break
-                        
-                        if not found:
-                            st.session_state.cart.append({
-                                'item_name': row['item_name'],
-                                'category': row['category'],
-                                'price': int(row['price']),
-                                'quantity': qty
-                            })
-                        
-                        st.success(f"✅ {row['item_name']} добавлен!")
-                        st.rerun()
-    
+                st.markdown(f"""
+                    <div class="menu-card">
+                        <h4>{row['item_name']}</h4>
+                        <span class="category-tag">{row['category']}</span>
+                        <p class="price-tag">💰 {row['price']}₸</p>
+                    </div>
+                """, unsafe_allow_html=True)
+                qty = st.number_input(
+                    "Саны", min_value=1, max_value=10, value=1, key=f"qty_{idx}"
+                )
+                if st.button("🛒 В корзину", key=f"add_{idx}",
+                             use_container_width=True, type="primary"):
+                    found = False
+                    for item in st.session_state.cart:
+                        if item['item_name'] == row['item_name']:
+                            item['quantity'] += qty
+                            found = True
+                            break
+                    if not found:
+                        st.session_state.cart.append({
+                            'item_name': row['item_name'],
+                            'category': row['category'],
+                            'price': int(row['price']),
+                            'quantity': qty
+                        })
+                    st.success(f"✅ {row['item_name']} добавлен!")
+                    st.rerun()
+
     # ===== СОҢҒЫ ТАПСЫРЫС =====
     if st.session_state.last_order:
         st.markdown("---")
@@ -382,28 +438,26 @@ else:
     # ==========================================================
     # АСХАНАШЫ РЕЖИМІ
     # ==========================================================
-    st.markdown('<div class="main-header">👨‍🍳 Панель повара</div>', 
+    st.markdown('<div class="main-header">👨‍🍳 Панель повара</div>',
                 unsafe_allow_html=True)
-    
-    # ===== ҚОЙЫНДЫЛАР =====
+
     tab1, tab2, tab3, tab4 = st.tabs(["📋 Меню", "➕ Добавить", "📦 Заказы", "📊 Отчеты"])
-    
-    menu_df = load_menu()
-    
-    # ===== 1-ҚОЙЫНДЫ: МӘЗІРДІ ӨҢДЕУ =====
+
+    menu_df = load_menu_from_github()
+
+    # ===== 1. МӘЗІРДІ ӨҢДЕУ =====
     with tab1:
         st.markdown("### 📋 Редактирование меню")
-        
+
         col1, col2 = st.columns(2)
         with col1:
-            week = st.selectbox("Неделя:", ['1-я неделя', '2-я неделя', 
-                                            '3-я неделя', '4-я неделя'])
+            week = st.selectbox("Неделя:",
+                                ['1-я неделя', '2-я неделя', '3-я неделя', '4-я неделя'])
         with col2:
             class_type = st.selectbox("Тип:", ['5-11 классы', '1-4 классы'])
-        
-        st.caption("💡 Двойной клик — редактирование. Галочка в 🗑️ — пометка на удаление.")
-        
-        # Редакторланатын кесте
+
+        st.caption("💡 Кестені тікелей өңдеңіз. Сақтау батырмасын басқанда GitHub-қа жіберіледі.")
+
         edited_df = st.data_editor(
             menu_df,
             use_container_width=True,
@@ -425,22 +479,25 @@ else:
             },
             key="menu_editor"
         )
-        
+
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("💾 Сохранить", use_container_width=True, type="primary"):
-                edited_df.to_csv("menu.csv", index=False)
-                load_menu.clear()
-                st.success("✅ Мәзір сақталды!")
-                st.rerun()
+            if st.button("💾 Сохранить в GitHub", use_container_width=True, type="primary"):
+                with st.spinner("GitHub-қа жіберілуде..."):
+                    if save_menu_to_github(edited_df):
+                        load_menu_from_github.clear()
+                        st.success("✅ Мәзір GitHub-қа сақталды!")
+                        st.rerun()
         with col2:
-            if st.button("🗑️ Удалить выделенные", use_container_width=True):
-                st.warning("Бұл функция қосымша өңдеуді қажет етеді")
-    
-    # ===== 2-ҚОЙЫНДЫ: ЖАҢА ТАҒАМ ҚОСУ =====
+            if st.button("🔄 GitHub-тан қайта жүктеу", use_container_width=True):
+                load_menu_from_github.clear()
+                st.success("✅ Жаңартылды!")
+                st.rerun()
+
+    # ===== 2. ЖАҢА ТАҒАМ ҚОСУ =====
     with tab2:
         st.markdown("### ➕ Быстрое добавление")
-        
+
         with st.form("add_dish_form"):
             col1, col2 = st.columns(2)
             with col1:
@@ -456,14 +513,17 @@ else:
             with col2:
                 new_price = st.number_input("Бағасы (₸):", min_value=0, value=500, step=50)
                 new_available = st.checkbox("Қолжетімді", value=True)
-            
-            submitted = st.form_submit_button("➕ Қосу", use_container_width=True, type="primary")
-            
+
+            submitted = st.form_submit_button(
+                "➕ Қосу және GitHub-қа сақтау",
+                use_container_width=True,
+                type="primary"
+            )
+
             if submitted:
                 if not new_name:
                     st.error("⚠️ Тағам атауын енгізіңіз!")
                 else:
-                    # Жаңа жазба қосу
                     new_row = pd.DataFrame([{
                         'day': new_day,
                         'item_name': new_name,
@@ -472,21 +532,20 @@ else:
                         'available': new_available
                     }])
                     updated_df = pd.concat([menu_df, new_row], ignore_index=True)
-                    updated_df.to_csv("menu.csv", index=False)
-                    load_menu.clear()
-                    st.success(f"✅ «{new_name}» қосылды!")
-                    st.rerun()
-    
-    # ===== 3-ҚОЙЫНДЫ: ТАПСЫРЫСТАР =====
+                    with st.spinner("GitHub-қа жіберілуде..."):
+                        if save_menu_to_github(updated_df):
+                            load_menu_from_github.clear()
+                            st.success(f"✅ «{new_name}» қосылды және GitHub-қа сақталды!")
+                            st.rerun()
+
+    # ===== 3. ТАПСЫРЫСТАР =====
     with tab3:
         st.markdown("### 📦 Заказы")
-        
         orders_df = load_orders()
-        
+
         if len(orders_df) == 0:
             st.info("📭 Тапсырыстар әзірге жоқ")
         else:
-            # Статистика
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("Барлық тапсырыс", len(orders_df))
@@ -497,19 +556,17 @@ else:
                 unique_classes = orders_df['class'].nunique() if 'class' in orders_df else 0
                 st.metric("Сыныптар", unique_classes)
             with col4:
-                if 'timestamp' in orders_df:
-                    unique_days = orders_df['timestamp'].str[:10].nunique()
+                if 'timestamp' in orders_df and len(orders_df) > 0:
+                    unique_days = orders_df['timestamp'].astype(str).str[:10].nunique()
                     st.metric("Күндер", unique_days)
-            
+
             st.markdown("---")
-            
-            # Сүзгілер
             col1, col2 = st.columns(2)
             with col1:
                 if 'class' in orders_df:
                     class_filter = st.multiselect(
                         "Сынып бойынша сүзу:",
-                        options=sorted(orders_df['class'].unique().tolist())
+                        options=sorted(orders_df['class'].astype(str).unique().tolist())
                     )
                 else:
                     class_filter = []
@@ -517,79 +574,61 @@ else:
                 if 'day' in orders_df:
                     day_filter = st.multiselect(
                         "Күн бойынша сүзу:",
-                        options=sorted(orders_df['day'].unique().tolist())
+                        options=sorted(orders_df['day'].astype(str).unique().tolist())
                     )
                 else:
                     day_filter = []
-            
-            # Сүзуді қолдану
+
             filtered_df = orders_df.copy()
             if class_filter and 'class' in filtered_df:
-                filtered_df = filtered_df[filtered_df['class'].isin(class_filter)]
+                filtered_df = filtered_df[filtered_df['class'].astype(str).isin(class_filter)]
             if day_filter and 'day' in filtered_df:
-                filtered_df = filtered_df[filtered_df['day'].isin(day_filter)]
-            
-            # Кестені көрсету
+                filtered_df = filtered_df[filtered_df['day'].astype(str).isin(day_filter)]
+
             st.dataframe(filtered_df, use_container_width=True, height=400)
-            
-            # CSV жүктеу
             csv = filtered_df.to_csv(index=False).encode('utf-8')
             st.download_button(
-                "📥 CSV жүктеу",
-                csv,
-                "orders_export.csv",
-                "text/csv",
+                "📥 CSV жүктеу", csv, "orders_export.csv", "text/csv",
                 use_container_width=True
             )
-    
-    # ===== 4-ҚОЙЫНДЫ: ЕСЕПТЕР =====
+
+    # ===== 4. ЕСЕПТЕР =====
     with tab4:
         st.markdown("### 📊 Отчеты")
-        
         orders_df = load_orders()
-        
+
         if len(orders_df) == 0:
             st.info("📭 Есептер үшін тапсырыстар жоқ")
         else:
-            # 1. Тағамдар бойынша есеп
             st.markdown("#### 🍽️ Тағамдар бойынша есеп")
             if 'item_name' in orders_df:
                 item_stats = orders_df.groupby('item_name').agg({
-                    'quantity': 'sum',
-                    'total': 'sum'
+                    'quantity': 'sum', 'total': 'sum'
                 }).reset_index().sort_values('quantity', ascending=False)
                 item_stats.columns = ['Тағам', 'Саны', 'Жалпы сома (₸)']
                 st.dataframe(item_stats, use_container_width=True)
-            
-            # 2. Сыныптар бойынша есеп
+
             st.markdown("#### 🎓 Сыныптар бойынша есеп")
             if 'class' in orders_df:
                 class_stats = orders_df.groupby('class').agg({
-                    'quantity': 'sum',
-                    'total': 'sum'
+                    'quantity': 'sum', 'total': 'sum'
                 }).reset_index().sort_values('total', ascending=False)
                 class_stats.columns = ['Сынып', 'Тағам саны', 'Жалпы сома (₸)']
                 st.dataframe(class_stats, use_container_width=True)
-            
-            # 3. Күндер бойынша есеп
+
             st.markdown("#### 📅 Күндер бойынша есеп")
             if 'day' in orders_df:
                 day_stats = orders_df.groupby('day').agg({
-                    'quantity': 'sum',
-                    'total': 'sum'
+                    'quantity': 'sum', 'total': 'sum'
                 }).reset_index()
                 day_stats.columns = ['Күн', 'Тағам саны', 'Жалпы сома (₸)']
                 st.dataframe(day_stats, use_container_width=True)
-                
-                # График
                 st.bar_chart(day_stats.set_index('Күн')['Жалпы сома (₸)'])
-            
-            # 4. Санаттар бойынша есеп
+
             st.markdown("#### 🏷️ Санаттар бойынша есеп")
             if 'category' in orders_df:
                 cat_stats = orders_df.groupby('category').agg({
-                    'quantity': 'sum',
-                    'total': 'sum'
+                    'quantity': 'sum', 'total': 'sum'
                 }).reset_index()
                 cat_stats.columns = ['Санат', 'Тағам саны', 'Жалпы сома (₸)']
                 st.dataframe(cat_stats, use_container_width=True)
@@ -602,7 +641,7 @@ else:
 st.markdown("---")
 st.markdown(
     "<p style='text-align:center; color:gray; font-size:0.85rem;'>"
-    "🍽️ Столовая школы Жас Дарын · Streamlit + GitHub · 2026"
+    "🍽️ Столовая школы Жас Дарын · GitHub + Streamlit · 2026"
     "</p>",
     unsafe_allow_html=True
 )
