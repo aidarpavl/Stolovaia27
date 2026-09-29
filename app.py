@@ -85,8 +85,19 @@ try:
         elif "token" in st.secrets:
             GITHUB_TOKEN = st.secrets["token"]
 
-    if GITHUB_TOKEN and isinstance(GITHUB_TOKEN, str) and GITHUB_TOKEN.startswith("ghp_"):
-        GITHUB_ENABLED = True
+      # Кез келген GitHub токен түрін қабылдау
+    if GITHUB_TOKEN and isinstance(GITHUB_TOKEN, str):
+        GITHUB_TOKEN = GITHUB_TOKEN.strip()  # Бос орындарды тазалау
+        if (
+            GITHUB_TOKEN.startswith("ghp_") or           # Classic
+            GITHUB_TOKEN.startswith("github_pat_") or    # Fine-grained
+            GITHUB_TOKEN.startswith("gho_") or           # OAuth
+            GITHUB_TOKEN.startswith("ghs_")              # Server
+        ):
+            GITHUB_ENABLED = True
+        else:
+            GITHUB_TOKEN = None
+            GITHUB_ENABLED = False
     else:
         GITHUB_TOKEN = None
         GITHUB_ENABLED = False
@@ -362,6 +373,26 @@ if "category" not in menu_df.columns:
 # SIDEBAR
 # ============================================================
 with st.sidebar:
+  # ===== ДИАГНОСТИКА (уақытша) =====
+    with st.expander("🔍 Диагностика (тек тексеру үшін)"):
+        try:
+            st.write("**Secrets keys:**", list(st.secrets.keys()))
+            if "github" in st.secrets:
+                gh = st.secrets["github"]
+                st.write("**github keys:**", list(gh.keys()))
+                token_val = gh.get("token", "")
+                if token_val:
+                    st.write(f"**Token ұзындығы:** {len(token_val)}")
+                    st.write(f"**Token басы:** {token_val[:12]}...")
+                    st.write(f"**Token соңы:** ...{token_val[-4:]}")
+                    st.write(f"**GITHUB_ENABLED:** {GITHUB_ENABLED}")
+                else:
+                    st.error("Token бос!")
+            else:
+                st.error("`[github]` секциясы жоқ!")
+        except Exception as e:
+            st.error(f"Диагностика қатесі: {e}")
+    # ===== ДИАГНОСТИКА СОҢЫ =====
     st.markdown("### ⚙️ Режим работы")
     role = st.radio(
         "Роль:",
