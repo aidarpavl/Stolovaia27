@@ -1,3 +1,285 @@
-streamlit==1.40.0
-pandas==2.2.3
-requests==2.32.3
+
+[     UTC     ] Logs for stolovaia27-9egrnkxbcqipsxf3sufp2g.streamlit.app/
+────────────────────────────────────────────────────────────────────────────────────────
+[11:46:10] 🚀 Starting up repository: 'stolovaia27', branch: 'main', main module: 'app.py'
+[11:46:10] 🐙 Cloning repository...
+[11:46:11] 🐙 Cloning into '/mount/src/stolovaia27'...
+
+[11:46:11] 🐙 Cloned repository!
+[11:46:11] 🐙 Pulling code changes from Github...
+[11:46:12] 📦 Processing dependencies...
+
+──────────────────────────────────────── uv ───────────────────────────────────────────
+
+Using uv pip install.
+Using Python 3.14.7 environment at /home/adminuser/venv
+Resolved 52 packages in 430ms
+Prepared 52 packages in 1.65s
+Installed 52 packages in 80ms
+ + altair==6.3.0
+ + anyio==4.15.1
+ + attrs==26.1.0
+ + certifi==2026.7.22
+ + cffi==2.1.1
+ +[2026-09-29 11:46:14.968010]  charset-normalizer==3.5.1
+ + click==8.5.0
+ + cryptography[2026-09-29 11:46:14.968127] ==50.0.1
+ + google-auth==2.59.0
+ + google-auth-oauthlib==1.4.1
+ + gspread==6.2.1
+ [2026-09-29 11:46:14.968308] + h11==0.16.0
+ + httplib2==0.32.0
+ + httptools==0.8.0
+ + idna==[2026-09-29 11:46:14.968439] 3.20
+ + itsdangerous==2.2.0
+ + jinja2==3.1.6
+ + jsonschema==4.26.0[2026-09-29 11:46:14.968574] 
+ + jsonschema-specifications==2025.9.1
+ + markupsafe==3.0.3
+ + narwhals==[2026-09-29 11:46:14.968704] 2.26.0
+ + numpy==2.5.3
+ + oauth2client==4.1.3
+ + oauthlib==4.0.0[2026-09-29 11:46:14.968804] 
+ + packaging==26.3
+ + pandas==3.0.6
+ + pillow==12.3.0
+ [2026-09-29 11:46:14.968905] + plotly==7.1.0
+ + protobuf==7.36.2
+ + pyarrow==25.0.1
+ + pyasn1==[2026-09-29 11:46:14.968985] 0.6.4
+ + pyasn1-modules==0.4.2
+ + pycparser==3.0
+ + pydeck==0.9.3
+ + pyparsing==[2026-09-29 11:46:14.969075] 3.3.3
+ + python-dateutil==2.9.0.post0
+ + python-multipart==0.0.32
+ + qrcode==8.2
+ + referencing==0.37.0
+ + requests==2.32.3
+ + requests-oauthlib==2.0.0
+ + rpds-py==[2026-09-29 11:46:14.969234] 2026.6.3
+ + rsa==4.9.1
+ + six==1.17.0
+ + starlette==1.7.0[2026-09-29 11:46:14.969351] 
+ + streamlit==1.64.0
+ + toml==0.10.2
+ + typing-extensions==4.16.0
+ + urllib3==2.8.0
+ + uvicorn==0.54.0
+ + watchdog==6.0.0
+ [2026-09-29 11:46:14.969507] + websockets==16.1.1
+Checking if Streamlit is installed
+Found Streamlit version 1.64.0 in the environment
+Detected pyarrow 25.0.1 (known segfault, apache/arrow#50471). Replacing with pyarrow<25.
+Using uv pip install.
+Using Python 3.14.7 environment at /home/adminuser/venv
+Resolved 1 package in 34ms
+Prepared 1 package in 803ms
+Uninstalled 1 package in 15ms
+Installed 1 package in 56ms
+ - pyarrow[2026-09-29 11:46:18.269511] ==25.0.1
+ + pyarrow==24.0.0
+Installing rich for an improved exception logging
+Using uv pip install.
+Using Python 3.14.7 environment at /home/adminuser/venv
+Resolved 4 packages in 113ms
+Prepared 4 packages in 101ms
+Installed 4 packages in 9ms
+ + markdown-it-py==4.2.0[2026-09-29 11:46:19.263069] 
+ + mdurl==0.1.2
+ + pygments==2.21.0
+ + rich==15.0.0
+
+────────────────────────────────────────────────────────────────────────────────────────
+
+[11:46:19] 🐍 Python dependencies were installed from /mount/src/stolovaia27/requirements.txt using uv.
+Check if streamlit is installed
+Streamlit is already installed
+[11:46:20] 📦 Processed dependencies!
+2026-09-29 11:46:22.341 Uvicorn server started on :::8501
+
+
+
+2026-09-29 11:47:04.802 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 11:47:21.868 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:05:25.120 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:05:46.292 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+[15:11:01] 🐙 Pulling code changes from Github...
+[15:11:02] 📦 Processing dependencies...
+[15:11:02] 📦 Processed dependencies!
+2026-09-29 15:11:02.939 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+[15:11:04] 🔄 Updated app!
+2026-09-29 15:11:13.256 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:11:49.561 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:12:00.714 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:16:32.063 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:16:46.530 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:16:55.139 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:16:56.172 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+[15:16:56] 🐙 Pulling code changes from Github...
+[15:16:58] 📦 Processing dependencies...
+[15:16:58] 📦 Processed dependencies!
+[15:16:59] 🔄 Updated app!
+2026-09-29 15:31:04.494 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:31:37.869 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:32:27.683 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:32:33.995 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+[15:38:54] 🐙 Pulling code changes from Github...
+[15:38:55] 📦 Processing dependencies...
+[15:38:55] 📦 Processed dependencies!
+[15:38:57] 🔄 Updated app!
+2026-09-29 15:39:26.393 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:39:44.643 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+2026-09-29 15:39:45.940 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+[15:39:50] 🐙 Pulling code changes from Github...
+[15:39:51] 📦 Processing dependencies...
+[15:39:51] 📦 Processed dependencies!
+[15:39:53] 🔄 Updated app!
+[15:46:33] 🐙 Pulling code changes from Github...
+2026-09-29 15:46:35.073 Script compilation error
+Traceback (most recent call last):
+  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 729, in _run_script
+    code = self._script_cache.get_bytecode(script_path)
+  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_cache.py", line 72, in get_bytecode
+    filebody = magic.add_magic(filebody, script_path)
+  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/magic.py", line 45, in add_magic
+    tree = ast.parse(code, script_path, "exec")
+  File "/usr/local/lib/python3.14/ast.py", line 46, in parse
+    return compile(source, filename, mode, flags,
+                   _feature_version=feature_version, optimize=optimize)
+  File "/mount/src/stolovaia27/app.py", line 700
+    keep_df = menu_df[menu_df["week"] != edit_week
+                     ^
+SyntaxError: '[' was never closed
+[15:46:35] 📦 Processing dependencies...
+[15:46:35] 📦 Processed dependencies!
+[15:46:36] 🔄 Updated app!
+2026-09-29 15:47:36.098 Script compilation error
+Traceback (most recent call last):
+  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 729, in _run_script
+    code = self._script_cache.get_bytecode(script_path)
+  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_cache.py", line 72, in get_bytecode
+    filebody = magic.add_magic(filebody, script_path)
+  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/magic.py", line 45, in add_magic
+    tree = ast.parse(code, script_path, "exec")
+  File "/usr/local/lib/python3.14/ast.py", line 46, in parse
+    return compile(source, filename, mode, flags,
+                   _feature_version=feature_version, optimize=optimize)
+  File "/mount/src/stolovaia27/app.py", line 700
+    keep_df = menu_df[menu_df["week"] != edit_week
+                     ^
+SyntaxError: '[' was never closed
+[15:48:26] 🐙 Pulling code changes from Github...
+[15:48:27] 📦 Processing dependencies...
+[15:48:27] 📦 Processed dependencies!
+[15:48:28] 🔄 Updated app!
+2026-09-29 15:50:37.704 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+────────────────────── Traceback (most recent call last) ───────────────────────
+  /home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptru  
+  nner/exec_code.py:136 in exec_func_with_error_handling                        
+                                                                                
+  /home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptru  
+  nner/script_runner.py:909 in code_to_exec                                     
+                                                                                
+  /mount/src/stolovaia27/app.py:732 in <module>                                 
+                                                                                
+    729 │   │   with st.form("add_dish"):                                       
+    730 │   │   │   c1, c2 = st.columns(2)                                      
+    731 │   │   │   with c1:                                                    
+  ❱ 732 │   │   │   │   nd                                                      
+    733                                                                         
+────────────────────────────────────────────────────────────────────────────────
+NameError: name 'nd' is not defined
+[15:53:18] 🐙 Pulling code changes from Github...
+[15:53:19] 📦 Processing dependencies...
+2026-09-29 15:53:19.974 Please replace `use_container_width` with `width`.
+
+`use_container_width` will be removed after 2025-12-31.
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+──────────────────────────────────────── uv ───────────────────────────────────────────
+
+Using uv pip install.
+Using Python 3.14.7 environment at /home/adminuser/venv
+Resolved 41 packages in 236ms

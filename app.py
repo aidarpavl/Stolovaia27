@@ -1,7 +1,6 @@
 """
 «Жас Дарын» мектебінің асханасы
 Столовая школы Жас Дарын — онлайн тапсырыс жүйесі
-Деректер көзі: github.com/aidarpavl/Stolovaia27
 """
 
 import streamlit as st
@@ -34,8 +33,6 @@ CSS = """
     margin-bottom: 8px;}
 .week-badge {background-color: #FF6B35; color: white; padding: 5px 15px;
     border-radius: 20px; font-weight: bold;}
-.report-badge {background-color: #28a745; color: white; padding: 5px 15px;
-    border-radius: 20px; font-weight: bold;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -59,7 +56,6 @@ MONTHLY_REPORT_PATH = "Stol_Zhd month1.csv"
 GITHUB_TOKEN = None
 GITHUB_ENABLED = False
 CHEF_PASSWORD = "povar2026"
-TOKEN_ERROR = None
 
 try:
     if hasattr(st, "secrets") and len(st.secrets) > 0:
@@ -72,9 +68,6 @@ try:
             MENU_PATH = gh.get("menu_path", MENU_PATH)
             DAILY_REPORT_PATH = gh.get("daily_report_path", DAILY_REPORT_PATH)
             MONTHLY_REPORT_PATH = gh.get("monthly_report_path", MONTHLY_REPORT_PATH)
-        elif "GITHUB_TOKEN" in st.secrets:
-            GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
-
         if "auth" in st.secrets:
             CHEF_PASSWORD = st.secrets["auth"].get("chef_password", CHEF_PASSWORD)
 
@@ -86,13 +79,8 @@ try:
                 GITHUB_TOKEN.startswith("ghs_")):
             GITHUB_ENABLED = True
         else:
-            TOKEN_ERROR = f"Токен форматы дұрыс емес: {GITHUB_TOKEN[:8]}..."
             GITHUB_TOKEN = None
-    elif not TOKEN_ERROR:
-        TOKEN_ERROR = "Токен бос немесе жол емес"
-
-except Exception as e:
-    TOKEN_ERROR = f"Secrets оқу қатесі: {e}"
+except Exception:
     GITHUB_TOKEN = None
     GITHUB_ENABLED = False
 
@@ -140,7 +128,7 @@ def _normalize_menu(df: pd.DataFrame) -> pd.DataFrame:
         df["week"] = "1-я неделя"
     for col in REQUIRED_COLUMNS:
         if col not in df.columns:
-            raise ValueError(f"CSV-де '{col}' бағаны жоқ. Бар: {list(df.columns)}")
+            raise ValueError(f"CSV-де '{col}' бағаны жоқ.")
     df = df[REQUIRED_COLUMNS].dropna(how="all")
     df = df[df["item_name"].notna() & (df["item_name"].astype(str).str.strip() != "")]
     df["week"] = df["week"].astype(str).str.strip()
@@ -289,7 +277,7 @@ def append_or_replace_daily(report_df: pd.DataFrame) -> bool:
     final_df = pd.concat([existing, report_df], ignore_index=True)
     if "Есеп күні" in final_df.columns:
         final_df = final_df.sort_values("Есеп күні").reset_index(drop=True)
-    msg = f"Күндік есеп: {report_date} ({datetime.now().strftime('%H:%M')})"
+    msg = f"Күндік есеп: {report_date}"
     return _github_save_csv(final_df, DAILY_REPORT_PATH, msg)
 
 
@@ -309,7 +297,7 @@ def append_or_replace_monthly(report_df: pd.DataFrame) -> bool:
     final_df = pd.concat([existing, report_df], ignore_index=True)
     if "Ай" in final_df.columns:
         final_df = final_df.sort_values("Ай").reset_index(drop=True)
-    msg = f"Айлық есеп: {report_month} ({datetime.now().strftime('%Y-%m-%d %H:%M')})"
+    msg = f"Айлық есеп: {report_month}"
     return _github_save_csv(final_df, MONTHLY_REPORT_PATH, msg)
 
 
@@ -617,7 +605,7 @@ else:
             st.markdown("#### 🔍 Толық кесте")
             st.dataframe(menu_df, use_container_width=True, height=400)
 
-    # ---------- 2. ЖАҢА ТАҒАМ ----------
+    # ---------- 2. ЖАҢА ТАҒАМ ҚОСУ ----------
     with tab2:
         st.markdown("### ➕ Быстрое добавление")
         with st.form("add_dish"):
@@ -658,4 +646,4 @@ else:
             st.info("📭 Тапсырыстар әзірге жоқ")
         else:
             c1, c2, c3, c4 = st.columns(4)
-           
+            c1.metric("Тапсырыс
