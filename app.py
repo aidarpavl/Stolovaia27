@@ -1,645 +1,608 @@
+"""
+«Жас Дарын» мектебінің асханасы
+Столовая школы Жас Дарын — онлайн тапсырыс жүйесі
+Автор: aidarpavl
+Streamlit + GitHub деректер көзі
+"""
+
 import streamlit as st
 import pandas as pd
 import os
-import datetime
-import time
+from datetime import datetime
 
-st.set_page_config(page_title="SchoolEats", page_icon="🍽️", layout="wide")
+# ============================================================
+# БЕТТІҢ КОНФИГУРАЦИЯСЫ
+# ============================================================
+st.set_page_config(
+    page_title="Столовая школы Жас Дарын",
+    page_icon="🍽️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-REPORT_DIR = "reports"
-DATA_DIR = "data"
-WEEKLY_REPORT_FILE = "Stolovaia ZHD1.csv"
-MONTHLY_REPORT_FILE = "Stol_Zhd month1.csv"
-ORDERS_FILE = "orders.csv"
-MENU_FILE = "menu.csv"
-MENU_COLS = ['week','day','menu_type','item_name','category','price','weight','calories','available']
-
-
-def ensure_directories():
-    if not os.path.exists('reports'):
-        os.makedirs('reports')
-    if not os.path.exists('data'):
-        os.makedirs('data')
-
-
-def save_weekly_report(data):
-    ensure_directories()
-    pd.DataFrame(data).to_csv(f"{REPORT_DIR}/{WEEKLY_REPORT_FILE}", index=False, encoding='utf-8-sig')
-
-
-def save_monthly_report(data):
-    ensure_directories()
-    pd.DataFrame(data).to_csv(f"{REPORT_DIR}/{MONTHLY_REPORT_FILE}", index=False, encoding='utf-8-sig')
-
-
-def load_weekly_report():
-    ensure_directories()
-    fp = f"{REPORT_DIR}/{WEEKLY_REPORT_FILE}"
-    cols = ['order_number','date','day','student_name','student_class','item','category','quantity','price','total_item_price','order_total','payment_method','status']
-    try:
-        if os.path.exists(fp):
-            return pd.read_csv(fp, encoding='utf-8-sig')
-    except Exception:
-        pass
-    return pd.DataFrame(columns=cols)
-
-
-def load_monthly_report():
-    ensure_directories()
-    fp = f"{REPORT_DIR}/{MONTHLY_REPORT_FILE}"
-    cols = ['order_number','date','day','student_name','student_class','item','category','quantity','price','total_item_price','order_total','payment_method','status']
-    try:
-        if os.path.exists(fp):
-            return pd.read_csv(fp, encoding='utf-8-sig')
-    except Exception:
-        pass
-    return pd.DataFrame(columns=cols)
-
-
-def load_orders():
-    ensure_directories()
-    fp = f"{REPORT_DIR}/{ORDERS_FILE}"
-    cols = ['order_number','date','day','student_name','student_class','items','total_price','payment_method','status']
-    try:
-        if os.path.exists(fp):
-            df = pd.read_csv(fp, encoding='utf-8-sig')
-            for c in cols:
-                if c not in df.columns:
-                    df[c] = ''
-            return df
-    except Exception:
-        pass
-    return pd.DataFrame(columns=cols)
-
-
-def save_orders(odf):
-    ensure_directories()
-    odf.to_csv(f"{REPORT_DIR}/{ORDERS_FILE}", index=False, encoding='utf-8-sig')
-
-
-def create_default_menu():
-    ensure_directories()
-    rows = []
-    for week in [1,2,3,4]:
-        for day in ['Понедельник','Вторник','Среда','Четверг','Пятница']:
-            jr = []
-            sr = []
-            if day == 'Понедельник':
-                jr = [('Каша манная','Завтрак',200,210),('Борщ','Обед',250,180),('Котлета с пюре','Обед',180,320),('Компот','Напитки',200,80)]
-                sr = [('Борщ','Обед',450),('Котлета с пюре','Обед',550),('Компот','Напитки',150)]
-            elif day == 'Вторник':
-                jr = [('Овсяная каша','Завтрак',200,220),('Суп куриный','Обед',250,190),('Плов','Обед',180,340),('Чай с молоком','Напитки',200,90)]
-                sr = [('Суп куриный','Обед',400),('Плов','Обед',600),('Чай','Напитки',100)]
-            elif day == 'Среда':
-                jr = [('Рисовая каша','Завтрак',200,230),('Солянка','Обед',250,200),('Рыба с рисом','Обед',180,310),('Кисель','Напитки',200,100)]
-                sr = [('Солянка','Обед',480),('Рыба с рисом','Обед',650),('Кисель','Напитки',120)]
-            elif day == 'Четверг':
-                jr = [('Пшённая каша','Завтрак',200,215),('Рассольник','Обед',250,185),('Гречка с мясом','Обед',180,330),('Сок','Напитки',200,110)]
-                sr = [('Рассольник','Обед',470),('Гречка с мясом','Обед',550),('Сок','Напитки',200)]
-            else:
-                jr = [('Кукурузная каша','Завтрак',200,225),('Лагман','Обед',250,260),('Макароны','Обед',180,300),('Кофейный напиток','Напитки',200,95)]
-                sr = [('Лагман','Обед',700),('Макароны','Обед',500),('Кофе','Напитки',250)]
-            for n,c,w,cal in jr:
-                rows.append({'week':week,'day':day,'menu_type':'junior','item_name':n,'category':c,'price':0,'weight':w,'calories':cal,'available':True})
-            for n,c,p in sr:
-                rows.append({'week':week,'day':day,'menu_type':'senior','item_name':n,'category':c,'price':p,'weight':0,'calories':0,'available':True})
-    df = pd.DataFrame(rows)
-    df.to_csv(f"{DATA_DIR}/{MENU_FILE}", index=False, encoding='utf-8-sig')
-    return df
-
-
-def load_menu_from_sheet():
-    ensure_directories()
-    fp = f"{DATA_DIR}/{MENU_FILE}"
-    try:
-        if os.path.exists(fp):
-            for enc in ['utf-8-sig','utf-8','cp1251','latin1']:
-                try:
-                    df = pd.read_csv(fp, encoding=enc)
-                    if not df.empty and 'day' in df.columns:
-                        if 'week' not in df.columns: df['week'] = 1
-                        if 'menu_type' not in df.columns: df['menu_type'] = 'senior'
-                        if 'weight' not in df.columns: df['weight'] = 0
-                        if 'calories' not in df.columns: df['calories'] = 0
-                        df.to_csv(fp, index=False, encoding='utf-8-sig')
-                        return df
-                except Exception:
-                    continue
-            return create_default_menu()
-        return create_default_menu()
-    except Exception:
-        return create_default_menu()
-
-
-def save_menu_to_sheet(mdf):
-    ensure_directories()
-    for col in MENU_COLS:
-        if col not in mdf.columns:
-            mdf[col] = 0 if col in ['price','weight','calories'] else ''
-    mdf = mdf[MENU_COLS]
-    mdf.to_csv(f"{DATA_DIR}/{MENU_FILE}", index=False, encoding='utf-8-sig')
-
-
-def add_new_item(week, day, mtype, name, cat, price=0, weight=0, cal=0, avail=True):
-    df = load_menu_from_sheet()
-    new = pd.DataFrame({'week':[week],'day':[day],'menu_type':[mtype],'item_name':[name],'category':[cat],'price':[price],'weight':[weight],'calories':[cal],'available':[avail]})
-    df = pd.concat([df, new], ignore_index=True)
-    save_menu_to_sheet(df)
-    return True
-
-
-def get_menu_by_week_day_type(week, day, mtype):
-    df = load_menu_from_sheet()
-    if df.empty:
-        return pd.DataFrame()
-    return df[(df['week']==week)&(df['day']==day)&(df['menu_type']==mtype)]
-
-
-def is_junior_class(cls):
-    try:
-        s = ''.join(filter(str.isdigit, str(cls)))
-        if s:
-            return 1 <= int(s) <= 4
-    except Exception:
-        pass
-    return False
-
-
-def generate_order_number():
-    return f"ORD-{datetime.datetime.now().strftime('%Y%m%d')}-{str(int(time.time()))[-4:]}"
-
-
-def place_order(name, cls, items, total, pm):
-    ensure_directories()
-    num = generate_order_number()
-    now = datetime.datetime.now()
-    tr = {'Monday':'Понедельник','Tuesday':'Вторник','Wednesday':'Среда','Thursday':'Четверг','Friday':'Пятница','Saturday':'Суббота','Sunday':'Воскресенье'}
-    day_ru = tr.get(now.strftime("%A"), now.strftime("%A"))
-    items_str = ", ".join([f"{i['name']} x{i['quantity']}" for i in items])
-    data = {'order_number':num,'date':now.strftime("%Y-%m-%d %H:%M:%S"),'day':day_ru,'student_name':name,'student_class':cls,'items':items_str,'total_price':total,'payment_method':pm,'status':'pending'}
-    odf = load_orders()
-    odf = pd.concat([odf, pd.DataFrame([data])], ignore_index=True)
-    save_orders(odf)
-    wdf = load_weekly_report()
-    mdf = load_monthly_report()
-    ds = now.date().strftime("%Y-%m-%d")
-    for item in items:
-        entry = pd.DataFrame([{'order_number':num,'date':ds,'day':day_ru,'student_name':name,'student_class':cls,'item':item['name'],'category':item.get('category',''),'quantity':item['quantity'],'price':item.get('price',0),'total_item_price':item.get('price',0)*item['quantity'],'order_total':total,'payment_method':pm,'status':'pending'}])
-        wdf = pd.concat([wdf, entry], ignore_index=True)
-        mdf = pd.concat([mdf, entry], ignore_index=True)
-    save_weekly_report(wdf)
-    save_monthly_report(mdf)
-    return num
-
-
-def complete_order(num):
-    odf = load_orders()
-    odf.loc[odf['order_number']==num,'status'] = 'completed'
-    save_orders(odf)
-    wdf = load_weekly_report()
-    if not wdf.empty and 'order_number' in wdf.columns:
-        wdf.loc[wdf['order_number']==num,'status'] = 'completed'
-        save_weekly_report(wdf)
-    mdf = load_monthly_report()
-    if not mdf.empty and 'order_number' in mdf.columns:
-        mdf.loc[mdf['order_number']==num,'status'] = 'completed'
-        save_monthly_report(mdf)
-
-
-def get_pending_orders():
-    odf = load_orders()
-    if not odf.empty and 'status' in odf.columns:
-        return odf[odf['status']=='pending']
-    return pd.DataFrame()
-
-
-def get_completed_orders():
-    odf = load_orders()
-    if not odf.empty and 'status' in odf.columns:
-        return odf[odf['status']=='completed']
-    return pd.DataFrame()
-
-
-def verify_chef_password(p):
-    return p == "123*"
-
-
+# ============================================================
+# CSS СТИЛЬДЕР
+# ============================================================
 st.markdown("""
-<style>
-    .main .block-container { padding-top: 2rem; padding-bottom: 2rem; max-width: 1200px; }
-    .stButton > button, .stFormSubmitButton > button, .stDownloadButton > button {
-        border-radius: 1rem !important; font-weight: 700 !important;
-        background-color: #f97316 !important; color: white !important; border: none !important;
+    <style>
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #FF6B35;
+        text-align: center;
+        margin-bottom: 1rem;
     }
-    .stButton > button:hover, .stFormSubmitButton > button:hover {
-        background-color: #ea580c !important;
+    .menu-card {
+        background-color: #f9f9f9;
+        border-radius: 10px;
+        padding: 15px;
+        border-left: 5px solid #FF6B35;
+        margin-bottom: 10px;
     }
-    footer { visibility: hidden; }
-</style>
+    .price-tag {
+        color: #FF6B35;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    .category-tag {
+        background-color: #FFE5D9;
+        color: #FF6B35;
+        padding: 3px 10px;
+        border-radius: 15px;
+        font-size: 0.85rem;
+    }
+    .top-teacher {
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+    .stButton>button {
+        background-color: #FF6B35;
+        color: white;
+        border-radius: 8px;
+        font-weight: bold;
+    }
+    </style>
 """, unsafe_allow_html=True)
 
+# ============================================================
+# ДЕРЕКТЕРДІ ЖҮКТЕУ
+# ============================================================
+@st.cache_data
+def load_menu():
+    """Мәзір деректерін CSV файлынан жүктеу"""
+    # GitHub-тан немесе жергілікті файлдан жүктеу
+    github_url = "https://raw.githubusercontent.com/aidarpavl/Zhd_-Stolovaya-zaiavka/main/menu.csv"
+    
+    try:
+        # Алдымен жергілікті файлды тексеру
+        if os.path.exists("menu.csv"):
+            df = pd.read_csv("menu.csv")
+        else:
+            # GitHub-тан жүктеу
+            df = pd.read_csv(github_url)
+        
+        # Баған атауларын тазалау
+        df.columns = df.columns.str.strip()
+        df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype(int)
+        df['available'] = df['available'].astype(str).str.upper() == 'TRUE'
+        
+        return df
+    except Exception as e:
+        st.error(f"Мәзірді жүктеу қатесі: {e}")
+        # Резервтік деректер
+        return pd.DataFrame({
+            'day': ['Понедельник'] * 5,
+            'item_name': ['Каша овсяная с ягодами', 'Бутерброд с сыром', 
+                         'Борщ со сметаной', 'Котлета с пюре', 'Компот из сухофруктов'],
+            'category': ['Завтрак', 'Завтрак', 'Обед', 'Обед', 'Напитки'],
+            'price': [450, 350, 550, 650, 150],
+            'available': [True] * 5
+        })
 
-def render_student():
-    st.markdown("# 🍽️ Столовая школы №27")
-    st.caption("Закажи обед онлайн")
 
-    if 'last_order_number' not in st.session_state:
-        st.session_state.last_order_number = None
-    if 'selected_week' not in st.session_state:
-        d = datetime.datetime.now().day
-        st.session_state.selected_week = 1 if d <= 7 else 2 if d <= 14 else 3 if d <= 21 else 4
-    if 'student_class' not in st.session_state:
-        st.session_state.student_class = ""
-    if 'qty_state' not in st.session_state:
-        st.session_state.qty_state = {}
+@st.cache_data
+def load_orders():
+    """Тапсырыстар деректерін жүктеу"""
+    if os.path.exists("Orders.csv"):
+        try:
+            df = pd.read_csv("Orders.csv")
+            return df
+        except:
+            pass
+    return pd.DataFrame(columns=[
+        'timestamp', 'class', 'day', 'item_name', 'category', 'price', 'quantity', 'total'
+    ])
 
-    if st.session_state.last_order_number:
-        st.success(f"🎫 Номер заказа: {st.session_state.last_order_number}")
 
+def save_order(order_data):
+    """Тапсырысты Orders.csv файлына сақтау"""
+    orders_df = load_orders()
+    new_order = pd.DataFrame([order_data])
+    orders_df = pd.concat([orders_df, new_order], ignore_index=True)
+    orders_df.to_csv("Orders.csv", index=False)
+    # Кэшті тазалау
+    load_orders.clear()
+
+
+# ============================================================
+# СЕССИЯ КҮЙІ
+# ============================================================
+if 'cart' not in st.session_state:
+    st.session_state.cart = []
+
+if 'role' not in st.session_state:
+    st.session_state.role = 'Ученик'
+
+if 'selected_week' not in st.session_state:
+    st.session_state.selected_week = '1-я неделя'
+
+if 'selected_day' not in st.session_state:
+    st.session_state.selected_day = 'Понедельник'
+
+if 'selected_class' not in st.session_state:
+    st.session_state.selected_class = ''
+
+if 'last_order' not in st.session_state:
+    st.session_state.last_order = None
+
+
+# ============================================================
+# БҮЙІРҒЫ БЕТ (SIDEBAR)
+# ============================================================
+with st.sidebar:
+    st.markdown("### ⚙️ Режим работы")
+    role = st.radio(
+        "Роль:",
+        options=['Ученик', 'Повар'],
+        index=0 if st.session_state.role == 'Ученик' else 1
+    )
+    st.session_state.role = role
+    
+    st.markdown("---")
+    
+    # ===== СЕБЕТ (тек оқушы режимінде) =====
+    if st.session_state.role == 'Ученик':
+        st.markdown("### 🛒 Корзина")
+        
+        if len(st.session_state.cart) == 0:
+            st.info("Корзина пуста")
+        else:
+            # Себеттегі тағамдарды көрсету
+            total_sum = 0
+            for i, item in enumerate(st.session_state.cart):
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.write(f"**{item['item_name']}**")
+                    st.caption(f"{item['category']} · {item['price']}₸ × {item['quantity']}")
+                with col2:
+                    if st.button("❌", key=f"remove_{i}"):
+                        st.session_state.cart.pop(i)
+                        st.rerun()
+                
+                total_sum += item['price'] * item['quantity']
+            
+            st.markdown(f"### 💰 Итого: **{total_sum}₸**")
+            
+            if st.button("🗑️ Очистить корзину", use_container_width=True):
+                st.session_state.cart = []
+                st.rerun()
+            
+            if st.button("✅ Оформить заказ", type="primary", use_container_width=True):
+                if not st.session_state.selected_class:
+                    st.error("⚠️ Сначала введите класс!")
+                else:
+                    # Тапсырысты сақтау
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    for item in st.session_state.cart:
+                        save_order({
+                            'timestamp': timestamp,
+                            'class': st.session_state.selected_class,
+                            'day': st.session_state.selected_day,
+                            'item_name': item['item_name'],
+                            'category': item['category'],
+                            'price': item['price'],
+                            'quantity': item['quantity'],
+                            'total': item['price'] * item['quantity']
+                        })
+                    
+                    st.session_state.last_order = {
+                        'timestamp': timestamp,
+                        'class': st.session_state.selected_class,
+                        'items': st.session_state.cart.copy(),
+                        'total': total_sum
+                    }
+                    st.session_state.cart = []
+                    st.success("✅ Заказ оформлен!")
+                    st.balloons()
+                    st.rerun()
+
+
+# ============================================================
+# НЕГІЗГІ БЕТ
+# ============================================================
+
+if st.session_state.role == 'Ученик':
+    # ==========================================================
+    # ОҚУШЫ РЕЖИМІ
+    # ==========================================================
+    st.markdown('<div class="main-header">🍽️ Столовая школы Жас Дарын</div>', 
+                unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:gray;'>Закажи обед онлайн</p>", 
+                unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # ===== КЛАСС ЕНГІЗУ =====
     st.markdown("### 🎓 Введите ваш класс")
-    ci = st.text_input("Класс (например, 3А или 7Б):", value=st.session_state.student_class, key="ci")
-    if ci != st.session_state.student_class:
-        st.session_state.student_class = ci
-        st.rerun()
-
-    is_jr = is_junior_class(st.session_state.student_class) if st.session_state.student_class else False
-    mtype = 'junior' if is_jr else 'senior'
-
-    if st.session_state.student_class:
-        if is_jr:
-            st.success(f"🍎 Младшие классы (1-4): {st.session_state.student_class}")
-        else:
-            st.info(f"🎓 Старшие классы (5-11): {st.session_state.student_class}")
-    else:
-        st.info("👆 Укажите класс")
-
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        class_num = st.text_input(
+            "Класс (например, 3А или 7Б):",
+            value=st.session_state.selected_class if st.session_state.selected_class else "8",
+            placeholder="Например: 8А"
+        )
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if class_num:
+            # Сынып тобын анықтау
+            try:
+                num = int(''.join(filter(str.isdigit, class_num)) or 0)
+                if num <= 4:
+                    group = "Младшие классы (1-4)"
+                elif num <= 8:
+                    group = "Средние классы (5-8)"
+                else:
+                    group = "Старшие классы (9-11)"
+                st.success(f"🎓 {group}: {class_num}")
+            except:
+                st.warning("Класс форматын тексеріңіз")
+    
+    st.session_state.selected_class = class_num
+    
+    st.markdown("---")
+    
+    # ===== АПТА ТАҢДАУ =====
     st.markdown("### 📅 Выберите неделю")
-    wopts = {1:"1-я неделя", 2:"2-я неделя", 3:"3-я неделя", 4:"4-я неделя"}
-    wcols = st.columns(4)
-    for i, (wn, wl) in enumerate(wopts.items()):
-        with wcols[i]:
-            lbl = f"✅ {wl}" if wn == st.session_state.selected_week else wl
-            if st.button(lbl, key=f"wb_{wn}", use_container_width=True):
-                st.session_state.selected_week = wn
+    weeks = ['1-я неделя', '2-я неделя', '3-я неделя', '4-я неделя']
+    week_cols = st.columns(4)
+    for i, week in enumerate(weeks):
+        with week_cols[i]:
+            if st.button(
+                week,
+                use_container_width=True,
+                type="primary" if st.session_state.selected_week == week else "secondary"
+            ):
+                st.session_state.selected_week = week
                 st.rerun()
-
-    days = ['Понедельник','Вторник','Среда','Четверг','Пятница']
-    sday = st.selectbox("День:", days, index=0)
-
-    if not st.session_state.student_class:
-        st.warning("⚠️ Введите класс")
+    
+    # ===== КҮН ТАҢДАУ =====
+    st.markdown("### 📆 День:")
+    days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница']
+    selected_day = st.selectbox(
+        "День недели:",
+        options=days,
+        index=days.index(st.session_state.selected_day),
+        label_visibility="collapsed"
+    )
+    st.session_state.selected_day = selected_day
+    
+    # ===== САНАТ ТАҢДАУ =====
+    menu_df = load_menu()
+    all_categories = ['Все'] + sorted(menu_df['category'].unique().tolist())
+    st.markdown("### 🏷️ Категория:")
+    selected_category = st.selectbox(
+        "Категория:",
+        options=all_categories,
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("---")
+    
+    # ===== МӘЗІРДІ КӨРСЕТУ =====
+    st.markdown(f"### 🍽️ Меню на {selected_day}")
+    
+    # Сүзу
+    day_menu = menu_df[menu_df['day'] == selected_day].copy()
+    if selected_category != 'Все':
+        day_menu = day_menu[day_menu['category'] == selected_category]
+    
+    if len(day_menu) == 0:
+        st.warning("⚠️ Бұл күнге тағамдар табылмады")
     else:
-        mdf = get_menu_by_week_day_type(st.session_state.selected_week, sday, mtype)
-        if mdf.empty:
-            st.warning(f"Меню на {sday} пока не загружено")
-        else:
-            cats = ['Все'] + list(mdf['category'].unique())
-            scat = st.selectbox("Категория:", cats)
-            fm = mdf.copy()
-            if scat != 'Все':
-                fm = fm[fm['category'] == scat]
-
-            st.markdown(f"### 🍽️ Меню на {sday}")
-            if not fm.empty:
-                cols = st.columns(3)
-                for idx, (_, item) in enumerate(fm.iterrows()):
-                    if item['available']:
-                        with cols[idx % 3]:
-                            with st.container():
-                                if is_jr:
-                                    w = int(item.get('weight', 0)) if pd.notna(item.get('weight', 0)) else 0
-                                    cal = int(item.get('calories', 0)) if pd.notna(item.get('calories', 0)) else 0
-                                    st.markdown(f"**{item['item_name']}**  \n*{item['category']}*  \n🔢 Кол-во: {w} • 🔥 {cal} ккал")
-                                else:
-                                    st.markdown(f"**{item['item_name']}**  \n*{item['category']}*  \n💰 {int(item['price'])}₸")
-
-                                qty_key = f"qty_{st.session_state.selected_week}_{item['item_name']}_{idx}"
-                                if qty_key not in st.session_state.qty_state:
-                                    st.session_state.qty_state[qty_key] = 1
-
-                                c1, c2, c3 = st.columns([1, 2, 1])
-                                with c1:
-                                    if st.button("➖", key=f"minus_{qty_key}", use_container_width=True):
-                                        cur = st.session_state.qty_state.get(qty_key, 1)
-                                        if cur > 0:
-                                            st.session_state.qty_state[qty_key] = cur - 1
-                                        st.rerun()
-                                with c2:
-                                    q = st.number_input(
-                                        "Кол-во",
-                                        min_value=0,
-                                        step=1,
-                                        key=f"num_{qty_key}",
-                                        value=st.session_state.qty_state.get(qty_key, 1),
-                                        label_visibility="collapsed"
-                                    )
-                                    st.session_state.qty_state[qty_key] = q
-                                with c3:
-                                    if st.button("➕", key=f"plus_{qty_key}", use_container_width=True):
-                                        cur = st.session_state.qty_state.get(qty_key, 1)
-                                        st.session_state.qty_state[qty_key] = cur + 1
-                                        st.rerun()
-
-                                if st.button("🛒 В корзину", key=f"add_{qty_key}", use_container_width=True):
-                                    qval = st.session_state.qty_state.get(qty_key, 1)
-                                    if qval > 0:
-                                        found = False
-                                        for x in st.session_state.cart:
-                                            if x['name'] == item['item_name']:
-                                                x['quantity'] += qval
-                                                found = True
-                                                break
-                                        if not found:
-                                            st.session_state.cart.append({
-                                                'name': item['item_name'],
-                                                'price': int(item['price']) if not is_jr else 0,
-                                                'quantity': qval,
-                                                'category': item['category']
-                                            })
-                                        st.success(f"Добавлено {qval} x {item['item_name']}")
-                                        st.session_state.qty_state[qty_key] = 1
-                                        st.rerun()
-
-    if st.session_state.get('show_checkout', False):
-        with st.expander("Оформление", expanded=True):
-            total = sum(i['price']*i['quantity'] for i in st.session_state.cart)
-            sname = st.text_input("Ваше имя")
-            sclass = st.text_input("Класс", value=st.session_state.student_class)
-
-            if is_jr:
-                st.info("🍎 Для 1-4 классов питание бесплатное")
-                if st.button("Подтвердить заказ"):
-                    if sname and sclass:
-                        onum = place_order(sname, sclass, st.session_state.cart, 0, "free")
-                        st.session_state.last_order_number = onum
-                        st.success(f"✅ Номер: {onum}")
-                        st.session_state.cart = []
-                        st.session_state.show_checkout = False
-                        time.sleep(2)
+        # Тағамдарды 3 бағанға бөлу
+        cols = st.columns(3)
+        for i, (idx, row) in enumerate(day_menu.iterrows()):
+            with cols[i % 3]:
+                with st.container():
+                    st.markdown(f"""
+                        <div class="menu-card">
+                            <h4>{row['item_name']}</h4>
+                            <span class="category-tag">{row['category']}</span>
+                            <p class="price-tag">💰 {row['price']}₸</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Санды реттеу
+                    qty_col1, qty_col2, qty_col3 = st.columns([1, 1, 1])
+                    with qty_col1:
+                        if st.button("−", key=f"minus_{idx}", use_container_width=True):
+                            pass
+                    with qty_col2:
+                        qty = st.number_input(
+                            "Саны",
+                            min_value=1,
+                            max_value=10,
+                            value=1,
+                            key=f"qty_{idx}",
+                            label_visibility="collapsed"
+                        )
+                    with qty_col3:
+                        if st.button("+", key=f"plus_{idx}", use_container_width=True):
+                            pass
+                    
+                    # Себетке қосу
+                    if st.button(
+                        "🛒 В корзину",
+                        key=f"add_{idx}",
+                        use_container_width=True,
+                        type="primary"
+                    ):
+                        # Себетте бар ма, тексеру
+                        found = False
+                        for item in st.session_state.cart:
+                            if item['item_name'] == row['item_name']:
+                                item['quantity'] += qty
+                                found = True
+                                break
+                        
+                        if not found:
+                            st.session_state.cart.append({
+                                'item_name': row['item_name'],
+                                'category': row['category'],
+                                'price': int(row['price']),
+                                'quantity': qty
+                            })
+                        
+                        st.success(f"✅ {row['item_name']} добавлен!")
                         st.rerun()
-            else:
-                pm = st.radio("Оплата:", ["Картой", "QR-код", "Наличными"])
-                if st.button("Подтвердить заказ"):
-                    if sname and sclass:
-                        onum = place_order(sname, sclass, st.session_state.cart, total, pm)
-                        st.session_state.last_order_number = onum
-                        st.success(f"✅ Номер: {onum}")
-                        st.session_state.cart = []
-                        st.session_state.show_checkout = False
-                        time.sleep(2)
-                        st.rerun()
+    
+    # ===== СОҢҒЫ ТАПСЫРЫС =====
+    if st.session_state.last_order:
+        st.markdown("---")
+        st.success(f"✅ Соңғы тапсырыс: {st.session_state.last_order['timestamp']}")
+        with st.expander("📋 Тапсырыс мәліметтерін көру"):
+            for item in st.session_state.last_order['items']:
+                st.write(f"• {item['item_name']} — {item['price']}₸ × {item['quantity']}")
+            st.write(f"**Жалпы: {st.session_state.last_order['total']}₸**")
 
 
-def render_chef():
-    st.markdown("# 👨‍🍳 Панель повара")
-
-    if not st.session_state.get('chef_authenticated', False):
-        st.markdown("### 🔐 Вход")
-        pwd = st.text_input("Пароль:", type="password")
-        if st.button("Войти", use_container_width=True):
-            if verify_chef_password(pwd):
-                st.session_state.chef_authenticated = True
-                st.rerun()
-            else:
-                st.error("Неверный пароль")
-        return
-
+else:
+    # ==========================================================
+    # АСХАНАШЫ РЕЖИМІ
+    # ==========================================================
+    st.markdown('<div class="main-header">👨‍🍳 Панель повара</div>', 
+                unsafe_allow_html=True)
+    
+    # ===== ҚОЙЫНДЫЛАР =====
     tab1, tab2, tab3, tab4 = st.tabs(["📋 Меню", "➕ Добавить", "📦 Заказы", "📊 Отчеты"])
-
+    
+    menu_df = load_menu()
+    
+    # ===== 1-ҚОЙЫНДЫ: МӘЗІРДІ ӨҢДЕУ =====
     with tab1:
         st.markdown("### 📋 Редактирование меню")
-        c1, c2 = st.columns(2)
-        with c1:
-            ew = st.selectbox("Неделя:", [1,2,3,4], format_func=lambda x: f"{x}-я неделя", key="ew")
-        with c2:
-            et = st.selectbox("Тип:", ['junior','senior'],
-                format_func=lambda x: "🍎 1-4 классы" if x=='junior' else "🎓 5-11 классы", key="et")
-
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            week = st.selectbox("Неделя:", ['1-я неделя', '2-я неделя', 
+                                            '3-я неделя', '4-я неделя'])
+        with col2:
+            class_type = st.selectbox("Тип:", ['5-11 классы', '1-4 классы'])
+        
         st.caption("💡 Двойной клик — редактирование. Галочка в 🗑️ — пометка на удаление.")
-
-        mdf = load_menu_from_sheet()
-        mask = (mdf['week']==ew) & (mdf['menu_type']==et)
-        fm = mdf[mask].copy()
-
-        if fm.empty:
-            st.info("Меню пустое. Добавьте блюда ниже или во вкладке «➕ Добавить».")
-        else:
-            disp = fm.copy()
-            disp.insert(0, '_del', False)
-            edited = st.data_editor(
-                disp,
-                use_container_width=True,
-                hide_index=True,
-                num_rows="dynamic",
-                column_config={
-                    "_del": st.column_config.CheckboxColumn("🗑️", default=False, width="small"),
-                    "week": st.column_config.NumberColumn("Нед.", disabled=True, width="small"),
-                    "day": st.column_config.SelectboxColumn("День",
-                        options=['Понедельник','Вторник','Среда','Четверг','Пятница'], required=True),
-                    "menu_type": st.column_config.SelectboxColumn("Тип",
-                        options=['junior','senior'], disabled=True, width="small"),
-                    "item_name": st.column_config.TextColumn("Блюдо", required=True),
-                    "category": st.column_config.SelectboxColumn("Категория",
-                        options=['Завтрак','Обед','Выпечка','Напитки','Салаты','Первое','Второе']),
-                    "price": st.column_config.NumberColumn("Цена ₸", min_value=0, step=10),
-                    "weight": st.column_config.NumberColumn("Кол-во", min_value=0, step=10),
-                    "calories": st.column_config.NumberColumn("Ккал", min_value=0, step=10),
-                    "available": st.column_config.CheckboxColumn("Дост.", default=True)
-                },
-                key=f"ed_{ew}_{et}"
-            )
-
-            bc1, bc2 = st.columns(2)
-            with bc1:
-                if st.button("💾 Сохранить", key=f"sv_{ew}_{et}", use_container_width=True):
-                    to_del = edited[edited['_del'] == True]
-                    to_keep = edited[edited['_del'] == False].copy()
-                    if '_del' in to_keep.columns:
-                        to_keep = to_keep.drop(columns=['_del'])
-                    others = mdf[~mask].copy()
-                    to_keep['week'] = ew
-                    to_keep['menu_type'] = et
-                    upd = pd.concat([others, to_keep], ignore_index=True)
-                    save_menu_to_sheet(upd)
-                    if len(to_del) > 0:
-                        st.success(f"✅ Сохранено! Удалено: {len(to_del)}")
-                    else:
-                        st.success("✅ Сохранено!")
-                    time.sleep(1)
-                    st.rerun()
-            with bc2:
-                if st.button("🗑️ Удалить выделенные", key=f"dl_{ew}_{et}", use_container_width=True):
-                    to_del = edited[edited['_del'] == True]
-                    if to_del.empty:
-                        st.warning("⚠️ Отметьте строки в столбце 🗑️")
-                    else:
-                        to_keep = edited[edited['_del'] == False].copy()
-                        if '_del' in to_keep.columns:
-                            to_keep = to_keep.drop(columns=['_del'])
-                        others = mdf[~mask].copy()
-                        to_keep['week'] = ew
-                        to_keep['menu_type'] = et
-                        upd = pd.concat([others, to_keep], ignore_index=True)
-                        save_menu_to_sheet(upd)
-                        st.success(f"🗑️ Удалено: {len(to_del)}")
-                        time.sleep(1)
-                        st.rerun()
-
-        st.markdown("---")
-        st.markdown("##### ➕ Быстрое добавление")
-        with st.form(key=f"qa_{ew}_{et}", clear_on_submit=True):
-            fc1, fc2, fc3 = st.columns(3)
-            with fc1:
-                qn = st.text_input("Название")
-            with fc2:
-                qc = st.selectbox("Категория", ['Завтрак','Обед','Выпечка','Напитки','Салаты','Первое','Второе'])
-            with fc3:
-                qd = st.selectbox("День", ['Понедельник','Вторник','Среда','Четверг','Пятница'])
-            fc4, fc5, fc6 = st.columns(3)
-            with fc4:
-                qp = st.number_input("Цена ₸", min_value=0, step=10)
-            with fc5:
-                qw = st.number_input("Кол-во", min_value=0, step=10)
-            with fc6:
-                qcal = st.number_input("Ккал", min_value=0, step=10)
-            if st.form_submit_button("➕ Добавить", use_container_width=True):
-                if qn:
-                    if et == 'senior':
-                        add_new_item(ew, qd, et, qn, qc, qp, 0, 0)
-                    else:
-                        add_new_item(ew, qd, et, qn, qc, 0, qw, qcal)
-                    st.success(f"✅ {qn}")
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.error("Введите название")
-
-    with tab2:
-        st.markdown("### ➕ Добавить блюдо")
-        c1, c2 = st.columns(2)
-        with c1:
-            nw = st.selectbox("Неделя", [1,2,3,4], format_func=lambda x: f"{x}-я неделя", key="nw")
-            nd = st.selectbox("День", ['Понедельник','Вторник','Среда','Четверг','Пятница'], key="nd")
-            nt = st.selectbox("Тип", ['junior','senior'],
-                format_func=lambda x: "🍎 1-4 классы" if x=='junior' else "🎓 5-11 классы", key="nt")
-            nn = st.text_input("Название", key="nn")
-        with c2:
-            nc = st.selectbox("Категория",
-                ['Завтрак','Обед','Выпечка','Напитки','Салаты','Первое','Второе'], key="nc")
-            np = st.number_input("Цена ₸", min_value=0, step=10, key="np")
-            nwt = st.number_input("Кол-во", min_value=0, step=10, key="nwt")
-            ncl = st.number_input("Ккал", min_value=0, step=10, key="ncl")
-        if st.button("➕ Добавить", key="addbtn"):
-            if nn:
-                add_new_item(nw, nd, nt, nn, nc, np, nwt, ncl)
-                st.success(f"✅ {nn}")
+        
+        # Редакторланатын кесте
+        edited_df = st.data_editor(
+            menu_df,
+            use_container_width=True,
+            num_rows="dynamic",
+            column_config={
+                "day": st.column_config.SelectboxColumn(
+                    "День",
+                    options=['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница'],
+                    required=True
+                ),
+                "item_name": st.column_config.TextColumn("Блюдо", required=True),
+                "category": st.column_config.SelectboxColumn(
+                    "Категория",
+                    options=['Завтрак', 'Обед', 'Салаты', 'Первое', 'Второе', 'Напитки'],
+                    required=True
+                ),
+                "price": st.column_config.NumberColumn("Цена ₸", min_value=0, format="%d₸"),
+                "available": st.column_config.CheckboxColumn("Доступно")
+            },
+            key="menu_editor"
+        )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💾 Сохранить", use_container_width=True, type="primary"):
+                edited_df.to_csv("menu.csv", index=False)
+                load_menu.clear()
+                st.success("✅ Мәзір сақталды!")
                 st.rerun()
-            else:
-                st.error("Введите название")
-
+        with col2:
+            if st.button("🗑️ Удалить выделенные", use_container_width=True):
+                st.warning("Бұл функция қосымша өңдеуді қажет етеді")
+    
+    # ===== 2-ҚОЙЫНДЫ: ЖАҢА ТАҒАМ ҚОСУ =====
+    with tab2:
+        st.markdown("### ➕ Быстрое добавление")
+        
+        with st.form("add_dish_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                new_day = st.selectbox(
+                    "Күн:",
+                    ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница']
+                )
+                new_name = st.text_input("Тағам атауы:")
+                new_category = st.selectbox(
+                    "Санаты:",
+                    ['Завтрак', 'Обед', 'Салаты', 'Первое', 'Второе', 'Напитки']
+                )
+            with col2:
+                new_price = st.number_input("Бағасы (₸):", min_value=0, value=500, step=50)
+                new_available = st.checkbox("Қолжетімді", value=True)
+            
+            submitted = st.form_submit_button("➕ Қосу", use_container_width=True, type="primary")
+            
+            if submitted:
+                if not new_name:
+                    st.error("⚠️ Тағам атауын енгізіңіз!")
+                else:
+                    # Жаңа жазба қосу
+                    new_row = pd.DataFrame([{
+                        'day': new_day,
+                        'item_name': new_name,
+                        'category': new_category,
+                        'price': new_price,
+                        'available': new_available
+                    }])
+                    updated_df = pd.concat([menu_df, new_row], ignore_index=True)
+                    updated_df.to_csv("menu.csv", index=False)
+                    load_menu.clear()
+                    st.success(f"✅ «{new_name}» қосылды!")
+                    st.rerun()
+    
+    # ===== 3-ҚОЙЫНДЫ: ТАПСЫРЫСТАР =====
     with tab3:
         st.markdown("### 📦 Заказы")
-        po = get_pending_orders()
-        if not po.empty:
-            st.info(f"Ожидают: {len(po)}")
-            for idx, (_, o) in enumerate(po.iterrows()):
-                with st.expander(f"🎫 {o.get('order_number','')} — {o.get('student_name','')}"):
-                    st.markdown(f"**Класс:** {o.get('student_class','')}")
-                    st.markdown(f"**Сумма:** {o.get('total_price',0)}₸")
-                    st.markdown(f"**Заказ:** {o.get('items','')}")
-                    st.markdown(f"**Оплата:** {o.get('payment_method','')}")
-                    if st.button("✅ Выдать", key=f"c_{idx}"):
-                        complete_order(o['order_number'])
-                        st.rerun()
+        
+        orders_df = load_orders()
+        
+        if len(orders_df) == 0:
+            st.info("📭 Тапсырыстар әзірге жоқ")
         else:
-            st.success("🎉 Нет активных заказов")
-
+            # Статистика
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Барлық тапсырыс", len(orders_df))
+            with col2:
+                total_sum = orders_df['total'].sum() if 'total' in orders_df else 0
+                st.metric("Жалпы сома", f"{total_sum:,}₸")
+            with col3:
+                unique_classes = orders_df['class'].nunique() if 'class' in orders_df else 0
+                st.metric("Сыныптар", unique_classes)
+            with col4:
+                if 'timestamp' in orders_df:
+                    unique_days = orders_df['timestamp'].str[:10].nunique()
+                    st.metric("Күндер", unique_days)
+            
+            st.markdown("---")
+            
+            # Сүзгілер
+            col1, col2 = st.columns(2)
+            with col1:
+                if 'class' in orders_df:
+                    class_filter = st.multiselect(
+                        "Сынып бойынша сүзу:",
+                        options=sorted(orders_df['class'].unique().tolist())
+                    )
+                else:
+                    class_filter = []
+            with col2:
+                if 'day' in orders_df:
+                    day_filter = st.multiselect(
+                        "Күн бойынша сүзу:",
+                        options=sorted(orders_df['day'].unique().tolist())
+                    )
+                else:
+                    day_filter = []
+            
+            # Сүзуді қолдану
+            filtered_df = orders_df.copy()
+            if class_filter and 'class' in filtered_df:
+                filtered_df = filtered_df[filtered_df['class'].isin(class_filter)]
+            if day_filter and 'day' in filtered_df:
+                filtered_df = filtered_df[filtered_df['day'].isin(day_filter)]
+            
+            # Кестені көрсету
+            st.dataframe(filtered_df, use_container_width=True, height=400)
+            
+            # CSV жүктеу
+            csv = filtered_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "📥 CSV жүктеу",
+                csv,
+                "orders_export.csv",
+                "text/csv",
+                use_container_width=True
+            )
+    
+    # ===== 4-ҚОЙЫНДЫ: ЕСЕПТЕР =====
     with tab4:
         st.markdown("### 📊 Отчеты")
-        rt = st.radio("Тип:", ["Недельный", "Месячный"], horizontal=True)
-
-        if rt == "Недельный":
-            df = load_weekly_report()
-            fname = WEEKLY_REPORT_FILE
+        
+        orders_df = load_orders()
+        
+        if len(orders_df) == 0:
+            st.info("📭 Есептер үшін тапсырыстар жоқ")
         else:
-            df = load_monthly_report()
-            fname = MONTHLY_REPORT_FILE
-
-        if not df.empty and 'order_number' in df.columns:
-            if 'status' in df.columns:
-                cc = len(df[df['status'] == 'completed']['order_number'].unique())
-                pc = len(df[df['status'] == 'pending']['order_number'].unique())
-            else:
-                cc = 0
-                pc = 0
-            if 'order_total' in df.columns:
-                tr = df['order_total'].sum()
-            else:
-                tr = 0
-
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.metric("✅ Выдано", cc)
-            with c2:
-                st.metric("⏳ Ожидают", pc)
-            with c3:
-                st.metric("💰 Выручка", f"{tr:,.0f}₸")
-
-            csv_data = df.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("📥 Скачать", csv_data, fname, "text/csv")
-        else:
-            st.info("Нет данных")
-
-
-def main():
-    ensure_directories()
-
-    if 'role' not in st.session_state:
-        st.session_state.role = "student"
-    if 'cart' not in st.session_state:
-        st.session_state.cart = []
-
-    with st.sidebar:
-        st.markdown("### 🎯 Режим работы")
-        role = st.radio("Роль:", ["Ученик", "Повар"], horizontal=True)
-        st.session_state.role = "student" if role == "Ученик" else "chef"
-
-        if st.session_state.role == "student":
-            st.markdown("---")
-            st.markdown("### 🛒 Корзина")
-            if st.session_state.cart:
-                total = sum(i['price'] * i['quantity'] for i in st.session_state.cart)
-                for i, item in enumerate(st.session_state.cart):
-                    c1, c2, c3 = st.columns([2, 1, 1])
-                    with c1:
-                        st.write(item['name'])
-                    with c2:
-                        if item['price'] > 0:
-                            st.write(f"{item['quantity']} x {item['price']}₸")
-                        else:
-                            st.write(f"{item['quantity']} порц.")
-                    with c3:
-                        if st.button("❌", key=f"rm_{i}_{item['name']}"):
-                            st.session_state.cart.pop(i)
-                            st.rerun()
-                if total > 0:
-                    st.markdown(f"**Итого: {total}₸**")
-                cc1, cc2 = st.columns(2)
-                with cc1:
-                    if st.button("🗑️ Очистить", use_container_width=True):
-                        st.session_state.cart = []
-                        st.rerun()
-                with cc2:
-                    if st.button("✅ Оформить", use_container_width=True):
-                        st.session_state.show_checkout = True
-            else:
-                st.info("Корзина пуста")
-
-    if st.session_state.role == "student":
-        render_student()
-    else:
-        render_chef()
+            # 1. Тағамдар бойынша есеп
+            st.markdown("#### 🍽️ Тағамдар бойынша есеп")
+            if 'item_name' in orders_df:
+                item_stats = orders_df.groupby('item_name').agg({
+                    'quantity': 'sum',
+                    'total': 'sum'
+                }).reset_index().sort_values('quantity', ascending=False)
+                item_stats.columns = ['Тағам', 'Саны', 'Жалпы сома (₸)']
+                st.dataframe(item_stats, use_container_width=True)
+            
+            # 2. Сыныптар бойынша есеп
+            st.markdown("#### 🎓 Сыныптар бойынша есеп")
+            if 'class' in orders_df:
+                class_stats = orders_df.groupby('class').agg({
+                    'quantity': 'sum',
+                    'total': 'sum'
+                }).reset_index().sort_values('total', ascending=False)
+                class_stats.columns = ['Сынып', 'Тағам саны', 'Жалпы сома (₸)']
+                st.dataframe(class_stats, use_container_width=True)
+            
+            # 3. Күндер бойынша есеп
+            st.markdown("#### 📅 Күндер бойынша есеп")
+            if 'day' in orders_df:
+                day_stats = orders_df.groupby('day').agg({
+                    'quantity': 'sum',
+                    'total': 'sum'
+                }).reset_index()
+                day_stats.columns = ['Күн', 'Тағам саны', 'Жалпы сома (₸)']
+                st.dataframe(day_stats, use_container_width=True)
+                
+                # График
+                st.bar_chart(day_stats.set_index('Күн')['Жалпы сома (₸)'])
+            
+            # 4. Санаттар бойынша есеп
+            st.markdown("#### 🏷️ Санаттар бойынша есеп")
+            if 'category' in orders_df:
+                cat_stats = orders_df.groupby('category').agg({
+                    'quantity': 'sum',
+                    'total': 'sum'
+                }).reset_index()
+                cat_stats.columns = ['Санат', 'Тағам саны', 'Жалпы сома (₸)']
+                st.dataframe(cat_stats, use_container_width=True)
+                st.bar_chart(cat_stats.set_index('Санат')['Жалпы сома (₸)'])
 
 
-if __name__ == "__main__":
-    main()
+# ============================================================
+# ФУТЕР
+# ============================================================
+st.markdown("---")
+st.markdown(
+    "<p style='text-align:center; color:gray; font-size:0.85rem;'>"
+    "🍽️ Столовая школы Жас Дарын · Streamlit + GitHub · 2026"
+    "</p>",
+    unsafe_allow_html=True
+)
