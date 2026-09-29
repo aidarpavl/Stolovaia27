@@ -542,11 +542,11 @@ else:
 
         if "daily_r" in st.session_state and not st.session_state.daily_r.empty:
             st.dataframe(st.session_state.daily_r, use_container_width=True)
-            if st.button("💾 GitHub-қа сақтау", use_container_width=True, type="primary"):
-                with st.spinner("Жіберілуде..."):
-                    if append_report(st.session_state.daily_r, DAILY_PATH, "Есеп күні"):
-                        st.success("✅ Сақталды!")
-
+           if st.button("💾 Күндік есепті сақтау", key="save_daily",
+             use_container_width=True, type="primary"):
+    with st.spinner("Жіберілуде..."):
+        if append_report(st.session_state.daily_r, DAILY_PATH, "Есеп күні"):
+            st.success("✅ Сақталды!")
     # --- АЙЛЫҚ ---
     with t5:
         st.markdown("### 📈 Айлық есеп")
@@ -569,11 +569,11 @@ else:
 
         if "month_r" in st.session_state and not st.session_state.month_r.empty:
             st.dataframe(st.session_state.month_r, use_container_width=True)
-            if st.button("💾 GitHub-қа сақтау", use_container_width=True, type="primary"):
-                with st.spinner("Жіберілуде..."):
-                    if append_report(st.session_state.month_r, MONTHLY_PATH, "Ай"):
-                        st.success("✅ Сақталды!")
-
+            if st.button("💾 Айлық есепті сақтау", key="save_monthly",
+             use_container_width=True, type="primary"):
+    with st.spinner("Жіберілуде..."):
+        if append_report(st.session_state.month_r, MONTHLY_PATH, "Ай"):
+            st.success("✅ Сақталды!")
 # ============================================================
 st.markdown("---")
 st.markdown("<p style='text-align:center;color:gray;font-size:.85rem;'>"
